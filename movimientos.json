@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "codigo": "AS002",
+    "tipo": "VENTA",
+    "cantidad": 1,
+    "fecha": "2026-11-05T13:52:37",
+    "sede": "principal",
+    "sede_afectada": "principal",
+    "venta_cruzada": false,
+    "observacion": "XD"
+  },
+  {
+    "id": 2,
+    "codigo": "AS001",
+    "tipo": "VENTA",
+    "cantidad": 8,
+    "fecha": "2026-11-05T13:55:22",
+    "sede": "secundaria",
+    "sede_afectada": "secundaria",
+    "venta_cruzada": false,
+    "observacion": "mmm"
+  },
+  {
+    "id": 3,
+    "codigo": "AS001",
+    "tipo": "INGRESO",
+    "cantidad": 2,
+    "fecha": "2026-11-05T13:58:34",
+    "sede": "secundaria",
+    "sede_afectada": "secundaria",
+    "venta_cruzada": false,
+    "observacion": ""
+  }
+]

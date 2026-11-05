@@ -1,0 +1,127 @@
+{% from "_iconos.html" import icono %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1d1a">
+  <title>Iniciar sesión | ACTIVE SPORT S.A.</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%230b1d1a'/%3E%3Ctext x='32' y='42' font-family='Segoe UI,sans-serif' font-size='25' font-weight='700' fill='%23c7f464' text-anchor='middle'%3EAS%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-brand">
+      <a class="login-marca" href="{{ url_for('login') }}">
+        <span class="marca-icono">AS</span>
+        <span>
+          <strong>ACTIVE SPORT</strong>
+          <small>Sistema de inventario multisede</small>
+        </span>
+      </a>
+
+      <div class="login-brand-cuerpo">
+        <p class="login-eyebrow">Control de acceso</p>
+        <h1>Inventario claro, operaciones seguras.</h1>
+        <p>Gestione existencias por sede, ventas, ingresos y reportes con permisos diferenciados para administradores y trabajadores.</p>
+
+        <ul class="login-beneficios">
+          <li>
+            <span>{{ icono('escudo') }}</span>
+            <div>
+              <strong>Acceso por rol</strong>
+              <small>Cada usuario ve únicamente las funciones que necesita.</small>
+            </div>
+          </li>
+          <li>
+            <span>{{ icono('usuarios') }}</span>
+            <div>
+              <strong>Equipo organizado</strong>
+              <small>Administradores gestionan usuarios y trabajadores operan el inventario.</small>
+            </div>
+          </li>
+          <li>
+            <span>{{ icono('historial') }}</span>
+            <div>
+              <strong>Trazabilidad operativa</strong>
+              <small>Ventas, ingresos y movimientos por sede en un solo lugar.</small>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <p class="login-pie">ACTIVE SPORT S.A. &middot; Prototipo académico &middot; v1.3 roles</p>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-card">
+        <div class="login-card-cabecera">
+          <span class="login-icono">{{ icono('llave') }}</span>
+          <div>
+            <p class="eyebrow">Bienvenido de nuevo</p>
+            <h2>Iniciar sesión</h2>
+            <p>Ingrese sus credenciales para continuar.</p>
+          </div>
+        </div>
+
+        {% with mensajes = get_flashed_messages(with_categories=true) %}
+          {% if mensajes %}
+          <div class="login-mensajes">
+            {% for categoria, mensaje in mensajes %}
+            <div class="login-alerta {{ categoria }}" role="alert">
+              <span>{{ icono('alerta' if categoria == 'error' else 'check') }}</span>
+              <p>{{ mensaje }}</p>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        {% endwith %}
+
+        <form class="login-formulario" method="post" action="{{ url_for('login') }}">
+          <input type="hidden" name="next" value="{{ destino }}">
+          <div class="campo">
+            <label for="usuario">Usuario</label>
+            <input
+              type="text"
+              id="usuario"
+              name="usuario"
+              value="{{ usuario_valor }}"
+              placeholder="Ej. admin"
+              maxlength="30"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              autofocus
+              required
+            >
+          </div>
+
+          <div class="campo">
+            <label for="password">Contraseña</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Ingrese su contraseña"
+              autocomplete="current-password"
+              required
+            >
+          </div>
+
+          <button class="boton boton-primario login-boton" type="submit">
+            {{ icono('salir') }}<span>Entrar al sistema</span>
+          </button>
+        </form>
+
+        <div class="login-demo">
+          <strong>Acceso inicial</strong>
+          <p><span>Administrador</span> <code>admin</code> / <code>Admin123!</code></p>
+          <p><span>Trabajador</span> <code>trabajador</code> / <code>Trabajador123!</code></p>
+          <small>Cambie estas contraseñas desde la gestión de usuarios.</small>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

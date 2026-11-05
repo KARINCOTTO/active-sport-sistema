@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block titulo %}Catálogo{% endblock %}
+{% block topbar_contexto %}Productos{% endblock %}
+{% block topbar_titulo %}Catálogo{% endblock %}
+
+{% block contenido %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Inventario disponible</p>
+    <h1>Catálogo de productos</h1>
+    <p class="page-subtitulo">Consulte existencias por sede, detecte faltantes y registre movimientos por producto.</p>
+  </div>
+  <div class="page-acciones">
+    {% if es_admin %}
+    <a class="boton boton-secundario" href="{{ url_for('exportar_productos', q=consulta, estado=estado, orden=orden) }}">{{ icono('descargar') }}<span>Exportar CSV</span></a>
+    <a class="boton boton-primario" href="{{ url_for('producto_nuevo') }}">{{ icono('plus') }}<span>Nuevo producto</span></a>
+    {% else %}
+    <a class="boton boton-primario" href="{{ url_for('movimientos') }}">{{ icono('plus') }}<span>Registrar movimiento</span></a>
+    {% endif %}
+  </div>
+</div>
+
+<section class="mini-stats" aria-label="Resumen del catálogo">
+  <div><span>Productos</span><strong>{{ resumen.total_productos }}</strong></div>
+  <div><span>Stock Principal</span><strong>{{ resumen.total_principal }}</strong></div>
+  <div><span>Stock Secundaria</span><strong>{{ resumen.total_secundario }}</strong></div>
+  <div><span>Alertas</span><strong class="{{ 'texto-peligro' if resumen.total_alertas else '' }}">{{ resumen.total_alertas }}</strong></div>
+</section>
+
+<form class="barra-filtros" method="get" action="{{ url_for('catalogo') }}">
+  <div class="buscador">
+    {{ icono('search') }}
+    <input type="search" name="q" value="{{ consulta }}" placeholder="Buscar por código o nombre..." aria-label="Buscar productos">
+  </div>
+  <label class="filtro-campo">
+    <span>Estado</span>
+    <select name="estado">
+      <option value="todos" {{ 'selected' if estado == 'todos' else '' }}>Todos</option>
+      <option value="alerta" {{ 'selected' if estado == 'alerta' else '' }}>Stock bajo</option>
+      <option value="disponible" {{ 'selected' if estado == 'disponible' else '' }}>Disponibles</option>
+      <option value="agotado" {{ 'selected' if estado == 'agotado' else '' }}>Agotados</option>
+    </select>
+  </label>
+  <label class="filtro-campo">
+    <span>Ordenar por</span>
+    <select name="orden">
+      <option value="codigo" {{ 'selected' if orden == 'codigo' else '' }}>Código (A-Z)</option>
+      <option value="nombre" {{ 'selected' if orden == 'nombre' else '' }}>Nombre (A-Z)</option>
+      <option value="stock_asc" {{ 'selected' if orden == 'stock_asc' else '' }}>Menor stock</option>
+      <option value="stock_desc" {{ 'selected' if orden == 'stock_desc' else '' }}>Mayor stock</option>
+      <option value="ventas_desc" {{ 'selected' if orden == 'ventas_desc' else '' }}>Más vendidos</option>
+      <option value="ventas_asc" {{ 'selected' if orden == 'ventas_asc' else '' }}>Menos vendidos</option>
+    </select>
+  </label>
+  <button class="boton boton-primario boton-sm" type="submit">{{ icono('filtro') }}<span>Filtrar</span></button>
+  {% if consulta or estado != 'todos' or orden != 'codigo' %}
+  <a class="boton-texto" href="{{ url_for('catalogo') }}">Limpiar filtros</a>
+  {% endif %}
+</form>
+
+<div class="resultado-meta">
+  <span>Mostrando <strong>{{ total_resultados }}</strong> de {{ resumen.total_productos }} productos</span>
+  {% if consulta %}<span class="chip">Búsqueda: {{ consulta }}</span>{% endif %}
+  {% if estado == 'alerta' %}<span class="chip chip-peligro">Stock bajo</span>{% endif %}
+</div>
+
+{% if productos %}
+<section class="grid-productos">
+  {% for producto in productos %}
+  {% set en_alerta = producto.codigo in codigos_en_alerta %}
+  {% set agotado = producto.stock_actual == 0 %}
+  {% set base_nivel = producto.stock_minimo * 2 if producto.stock_minimo > 0 else 1 %}
+  {% set nivel = producto.stock_actual / base_nivel * 100 %}
+  <article class="producto-card {{ 'producto-critico' if en_alerta else '' }}">
+    <div class="producto-card-top">
+      <span class="codigo">{{ producto.codigo }}</span>
+      {% if agotado %}
+        <span class="badge badge-peligro">{{ icono('alerta') }} Agotado</span>
+      {% elif en_alerta %}
+        <span class="badge badge-peligro">{{ icono('alerta') }} Stock bajo</span>
+      {% else %}
+        <span class="badge badge-ok">{{ icono('check') }} Disponible</span>
+      {% endif %}
+    </div>
+
+    <h3>{{ producto.nombre }}</h3>
+
+    <div class="stock-principal">
+      <strong>{{ producto.stock_actual }}</strong>
+      <span>unidades totales</span>
+    </div>
+
+    <div class="stock-sedes" aria-label="Stock por sede">
+      <div class="{{ 'sin-stock' if producto.stock_principal == 0 else '' }}">
+        <span>Sede Principal</span>
+        <strong>{{ producto.stock_principal }}</strong>
+      </div>
+      <div class="{{ 'sin-stock' if producto.stock_secundario == 0 else '' }}">
+        <span>Sede Secundaria</span>
+        <strong>{{ producto.stock_secundario }}</strong>
+      </div>
+    </div>
+
+    <div class="stock-datos">
+      <span>Mínimo <strong>{{ producto.stock_minimo }}</strong></span>
+      <span>Ventas mes <strong>{{ producto.ventas_mes }}</strong></span>
+    </div>
+
+    <div class="nivel-stock">
+      <div class="barra">
+        <span class="{{ 'peligro' if en_alerta else '' }}" style="width: {{ nivel if nivel < 100 else 100 }}%"></span>
+      </div>
+      <div class="nivel-texto">
+        {% if en_alerta %}
+          <span class="texto-peligro">Faltan {{ producto.stock_minimo - producto.stock_actual }} unidades</span>
+        {% else %}
+          <span>{{ producto.stock_actual - producto.stock_minimo }} sobre el mínimo</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="producto-card-acciones">
+      <a class="boton boton-secundario boton-sm" href="{{ url_for('producto_detalle', codigo=producto.codigo) }}">{{ icono('ojo') }}<span>Detalle</span></a>
+      <a class="accion-rapida venta" href="{{ url_for('movimientos', codigo=producto.codigo, tipo='VENTA') }}" title="Registrar venta">
+        {{ icono('salida') }}<span>Vender</span>
+      </a>
+      <a class="accion-rapida ingreso" href="{{ url_for('movimientos', codigo=producto.codigo, tipo='INGRESO') }}" title="Registrar ingreso">
+        {{ icono('entrada') }}<span>Ingresar</span>
+      </a>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<div class="panel estado-vacio">
+  <span class="estado-vacio-icono">{{ icono('search') }}</span>
+  <div>
+    <strong>No se encontraron productos</strong>
+    <p>Ajuste los filtros de búsqueda o registre un producto nuevo en el catálogo.</p>
+    <div class="estado-vacio-acciones">
+      <a class="boton boton-secundario boton-sm" href="{{ url_for('catalogo') }}">Limpiar filtros</a>
+      {% if es_admin %}
+      <a class="boton boton-primario boton-sm" href="{{ url_for('producto_nuevo') }}">{{ icono('plus') }}<span>Nuevo producto</span></a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

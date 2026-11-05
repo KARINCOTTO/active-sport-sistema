@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% set es_edicion = modo == 'editar' %}
+{% block titulo %}{{ 'Editar producto' if es_edicion else 'Nuevo producto' }}{% endblock %}
+{% block topbar_contexto %}Catálogo / {{ 'Edición' if es_edicion else 'Alta' }}{% endblock %}
+{% block topbar_titulo %}{{ 'Editar producto' if es_edicion else 'Nuevo producto' }}{% endblock %}
+
+{% block contenido %}
+<nav class="migas" aria-label="Ruta de navegación">
+  <a href="{{ url_for('catalogo') }}">Catálogo</a>
+  {{ icono('flecha') }}
+  {% if es_edicion %}
+    <a href="{{ url_for('producto_detalle', codigo=producto.codigo) }}">{{ producto.codigo }}</a>
+    {{ icono('flecha') }}
+    <span>Editar</span>
+  {% else %}
+    <span>Nuevo producto</span>
+  {% endif %}
+</nav>
+
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{{ 'Actualización de datos maestros' if es_edicion else 'Alta de inventario' }}</p>
+    <h1>{{ 'Editar producto' if es_edicion else 'Registrar nuevo producto' }}</h1>
+    <p class="page-subtitulo">
+      {% if es_edicion %}
+        Modifique el nombre o el stock mínimo. Las existencias por sede se ajustan únicamente mediante movimientos.
+      {% else %}
+        Incorpore un nuevo artículo al catálogo con sus existencias iniciales en cada sede y nivel mínimo de seguridad.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+{% if errores %}
+<div class="mensaje-error-panel" role="alert">
+  <span class="mensaje-error-icono">{{ icono('alerta') }}</span>
+  <div>
+    <strong>No se pudo guardar el producto</strong>
+    <ul>
+      {% for error in errores %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-formulario">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Datos del producto</h2>
+        <p class="panel-subtitulo">Los campos marcados con * son obligatorios.</p>
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('producto_editar', codigo=producto.codigo) if es_edicion else url_for('producto_nuevo') }}" class="formulario" novalidate>
+      <div class="form-grid">
+        <div class="campo">
+          <label for="codigo">Código del producto *</label>
+          <input
+            type="text"
+            id="codigo"
+            name="codigo"
+            value="{{ valores.codigo }}"
+            maxlength="12"
+            placeholder="Ej. AS007"
+            autocomplete="off"
+            {{ 'readonly' if es_edicion else '' }}
+            required
+          >
+          <p class="ayuda">Entre 2 y 12 caracteres: letras, números o guiones.</p>
+        </div>
+
+        <div class="campo campo-amplio">
+          <label for="nombre">Nombre del producto *</label>
+          <input
+            type="text"
+            id="nombre"
+            name="nombre"
+            value="{{ valores.nombre }}"
+            maxlength="80"
+            placeholder="Ej. Gorra deportiva"
+            autocomplete="off"
+            required
+          >
+        </div>
+
+        {% if es_edicion %}
+        <div class="campo">
+          <label>Stock Sede Principal</label>
+          <div class="solo-lectura">{{ producto.stock_principal }} unidades</div>
+          <p class="ayuda">Se modifica registrando ventas o ingresos en esa sede.</p>
+        </div>
+        <div class="campo">
+          <label>Stock Sede Secundaria</label>
+          <div class="solo-lectura">{{ producto.stock_secundario }} unidades</div>
+          <p class="ayuda">Se modifica registrando ventas o ingresos en esa sede.</p>
+        </div>
+        <div class="campo">
+          <label>Stock total</label>
+          <div class="solo-lectura">{{ producto.stock_actual }} unidades</div>
+          <p class="ayuda">Suma consolidada de ambas sedes.</p>
+        </div>
+        <div class="campo">
+          <label>Ventas del mes</label>
+          <div class="solo-lectura">{{ producto.ventas_mes }} unidades</div>
+          <p class="ayuda">Calculado automáticamente desde las ventas.</p>
+        </div>
+        {% else %}
+        <div class="campo">
+          <label for="stock_principal">Stock inicial Principal *</label>
+          <input type="number" id="stock_principal" name="stock_principal" min="0" step="1" value="{{ valores.stock_principal }}" required>
+        </div>
+        <div class="campo">
+          <label for="stock_secundario">Stock inicial Secundaria *</label>
+          <input type="number" id="stock_secundario" name="stock_secundario" min="0" step="1" value="{{ valores.stock_secundario }}" required>
+        </div>
+        <div class="campo">
+          <label for="ventas_mes">Ventas del mes</label>
+          <input type="number" id="ventas_mes" name="ventas_mes" min="0" step="1" value="{{ valores.ventas_mes }}">
+          <p class="ayuda">Puede dejarse en 0 para un producto nuevo.</p>
+        </div>
+        {% endif %}
+
+        <div class="campo">
+          <label for="stock_minimo">Stock mínimo *</label>
+          <input type="number" id="stock_minimo" name="stock_minimo" min="0" step="1" value="{{ valores.stock_minimo }}" required>
+          <p class="ayuda">Umbral consolidado a partir del cual se genera una alerta de reposición.</p>
+        </div>
+      </div>
+
+      <div class="form-acciones">
+        <a class="boton boton-secundario" href="{{ url_for('producto_detalle', codigo=producto.codigo) if es_edicion else url_for('catalogo') }}">Cancelar</a>
+        <button class="boton boton-primario" type="submit">
+          {{ icono('check') }}<span>{{ 'Guardar cambios' if es_edicion else 'Crear producto' }}</span>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <aside class="panel panel-lateral">
+    <div class="panel-cabecera">
+      <div>
+        <h2>{{ 'Consideraciones' if es_edicion else 'Buenas prácticas' }}</h2>
+      </div>
+    </div>
+
+    <ul class="lista-consejos">
+      <li>
+        <span class="consejo-icono">{{ icono('escudo') }}</span>
+        <div>
+          <strong>Stock mínimo</strong>
+          <p>Defina un nivel que cubra el tiempo de reposición y la demanda habitual.</p>
+        </div>
+      </li>
+      <li>
+        <span class="consejo-icono">{{ icono('movimientos') }}</span>
+        <div>
+          <strong>Existencias controladas</strong>
+          <p>El stock de cada sede solo debe cambiar mediante ventas e ingresos registrados.</p>
+        </div>
+      </li>
+      <li>
+        <span class="consejo-icono">{{ icono('alerta') }}</span>
+        <div>
+          <strong>Alertas automáticas</strong>
+          <p>Cuando el stock total sea igual o menor al mínimo consolidado, el sistema mostrará una alerta.</p>
+        </div>
+      </li>
+      {% if not es_edicion %}
+      <li>
+        <span class="consejo-icono">{{ icono('catalogo') }}</span>
+        <div>
+          <strong>Código único</strong>
+          <p>Utilice una nomenclatura consistente, por ejemplo AS007, para facilitar la búsqueda.</p>
+        </div>
+      </li>
+      {% endif %}
+    </ul>
+  </aside>
+</div>
+{% endblock %}

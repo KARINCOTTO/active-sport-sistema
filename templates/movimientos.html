@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block titulo %}Movimientos{% endblock %}
+{% block topbar_contexto %}Operaciones{% endblock %}
+{% block topbar_titulo %}Movimientos{% endblock %}
+
+{% block contenido %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Registro de operaciones</p>
+    <h1>Ventas e ingresos</h1>
+    <p class="page-subtitulo">Registre ventas e ingresos por sede. Si el producto no alcanza en la sede elegida, el sistema puede ofrecer el retiro en la otra sede.</p>
+  </div>
+  {% if es_admin %}
+  <div class="page-acciones">
+    <a class="boton boton-secundario" href="{{ url_for('exportar_movimientos', tipo=filtros.tipo, codigo=filtros.codigo, sede=filtros.sede, q=filtros.consulta, desde=filtros.desde, hasta=filtros.hasta) }}">{{ icono('descargar') }}<span>Exportar CSV</span></a>
+    <a class="boton boton-primario" href="{{ url_for('reporte') }}">{{ icono('reporte') }}<span>Ver reporte</span></a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid-formulario">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Nuevo movimiento</h2>
+        <p class="panel-subtitulo">Complete los datos de la operación.</p>
+      </div>
+    </div>
+
+    {% if errores %}
+    <div class="mensaje-error-panel" role="alert">
+      <span class="mensaje-error-icono">{{ icono('alerta') }}</span>
+      <div>
+        <strong>No se pudo registrar el movimiento</strong>
+        <ul>
+          {% for error in errores %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if confirmacion_cruce %}
+    <div class="confirmacion-cruce" role="alert">
+      <span class="aviso-icono">{{ icono('alerta') }}</span>
+      <div class="confirmacion-cruce-info">
+        <strong>Confirme la venta con retiro en otra sede</strong>
+        <p>{{ confirmacion_cruce.mensaje }}</p>
+        <span class="ayuda">{{ confirmacion_cruce.cantidad }} x {{ confirmacion_cruce.nombre_producto }} &middot; solicitado desde {{ confirmacion_cruce.sede|nombre_sede }}</span>
+      </div>
+      <form method="post" action="{{ url_for('movimientos') }}" class="confirmacion-cruce-form">
+        <input type="hidden" name="codigo" value="{{ valores.codigo }}">
+        <input type="hidden" name="tipo" value="{{ valores.tipo }}">
+        <input type="hidden" name="cantidad" value="{{ valores.cantidad }}">
+        <input type="hidden" name="observacion" value="{{ valores.observacion }}">
+        <input type="hidden" name="sede" value="{{ valores.sede }}">
+        <input type="hidden" name="confirmar_cruce" value="1">
+        <button class="boton boton-primario boton-sm" type="submit">{{ icono('check') }}<span>Sí, continuar</span></button>
+        <a class="boton-texto" href="{{ url_for('movimientos') }}">Cancelar</a>
+      </form>
+    </div>
+    {% endif %}
+
+    <form id="formulario-movimiento" method="post" action="{{ url_for('movimientos') }}" class="formulario" novalidate>
+      <input type="hidden" name="confirmar_cruce" id="confirmar-cruce" value="{{ valores.confirmar_cruce or '0' }}">
+      <fieldset class="tipo-movimiento">
+        <legend>Tipo de movimiento *</legend>
+        <div class="tipo-opciones">
+          <label class="tipo-opcion {{ 'seleccionado' if valores.tipo == 'VENTA' else '' }}">
+            <input type="radio" name="tipo" value="VENTA" {{ 'checked' if valores.tipo == 'VENTA' else '' }} required>
+            <span class="tipo-contenido">
+              <span class="tipo-icono venta">{{ icono('salida') }}</span>
+              <span>
+                <strong>Venta</strong>
+                <small>Disminuye el stock y suma a las ventas del mes.</small>
+              </span>
+            </span>
+          </label>
+          <label class="tipo-opcion {{ 'seleccionado' if valores.tipo == 'INGRESO' else '' }}">
+            <input type="radio" name="tipo" value="INGRESO" {{ 'checked' if valores.tipo == 'INGRESO' else '' }} required>
+            <span class="tipo-contenido">
+              <span class="tipo-icono ingreso">{{ icono('entrada') }}</span>
+              <span>
+                <strong>Ingreso / compra</strong>
+                <small>Incrementa las unidades disponibles.</small>
+              </span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="form-grid">
+        <div class="campo campo-completo">
+          <label for="codigo">Producto *</label>
+          <select id="codigo" name="codigo" required>
+            <option value="">Seleccione un producto</option>
+            {% for producto in productos %}
+              <option
+                value="{{ producto.codigo }}"
+                data-stock-principal="{{ producto.stock_principal }}"
+                data-stock-secundario="{{ producto.stock_secundario }}"
+                data-stock="{{ producto.stock_actual }}"
+                data-minimo="{{ producto.stock_minimo }}"
+                data-nombre="{{ producto.nombre }}"
+                {{ 'selected' if valores.codigo == producto.codigo else '' }}
+              >
+                {{ producto.codigo }} &middot; {{ producto.nombre }} (P: {{ producto.stock_principal }} / S: {{ producto.stock_secundario }})
+              </option>
+            {% endfor %}
+          </select>
+          <p class="ayuda" id="info-stock">Seleccione un producto para ver su stock disponible por sede.</p>
+        </div>
+
+        <div class="campo campo-medio">
+          <label for="sede">Sede de la operación *</label>
+          <select id="sede" name="sede" required>
+            {% for clave, sede in sedes.items() %}
+              <option value="{{ clave }}" data-nombre="{{ sede.nombre }}" {{ 'selected' if valores.sede == clave else '' }}>{{ sede.nombre }}</option>
+            {% endfor %}
+          </select>
+          <p class="ayuda">Sede donde se registra la venta o el ingreso.</p>
+        </div>
+
+        <div class="campo campo-medio">
+          <label for="cantidad">Cantidad *</label>
+          <input
+            type="number"
+            id="cantidad"
+            name="cantidad"
+            min="1"
+            step="1"
+            value="{{ valores.cantidad }}"
+            placeholder="Ej. 5"
+            inputmode="numeric"
+            required
+          >
+          <p class="ayuda">Número entero mayor que cero.</p>
+        </div>
+      </div>
+
+      <div class="campo campo-completo">
+        <label for="observacion">Observación</label>
+        <textarea
+          id="observacion"
+          name="observacion"
+          rows="3"
+          maxlength="250"
+          placeholder="Ej. Venta en local / compra a proveedor"
+        >{{ valores.observacion }}</textarea>
+        <p class="ayuda">Opcional. Máximo 250 caracteres.</p>
+      </div>
+
+      <div class="resumen-operacion" id="resumen-operacion">
+        <span class="resumen-titulo">{{ icono('lista') }} Resumen de la operación</span>
+        <div class="resumen-lineas">
+          <span><span id="resumen-sede-etiqueta">Stock en sede</span> <strong id="resumen-stock">—</strong></span>
+          <span><span id="resumen-otra-etiqueta">Otra sede</span> <strong id="resumen-otra">—</strong></span>
+          <span><span id="resumen-resultado-etiqueta">Stock resultante</span> <strong id="resumen-resultado">—</strong></span>
+        </div>
+        <p class="ayuda" id="resumen-mensaje">Seleccione producto, sede y cantidad para ver el resultado.</p>
+      </div>
+
+      <div class="aviso-cruce" id="aviso-cruce" hidden>
+        <span class="aviso-icono">{{ icono('alerta') }}</span>
+        <div>
+          <strong>Disponible en la otra sede</strong>
+          <p id="aviso-cruce-texto"></p>
+        </div>
+      </div>
+
+      <div class="form-acciones">
+        <a class="boton boton-secundario" href="{{ url_for('panel') }}">Cancelar</a>
+        <button class="boton boton-primario" type="submit">{{ icono('check') }}<span>Registrar movimiento</span></button>
+      </div>
+    </form>
+
+    <dialog class="dialogo-cruce" id="dialogo-cruce" aria-labelledby="dialogo-cruce-titulo">
+      <form method="dialog" class="dialogo-cruce-panel">
+        <span class="dialogo-cruce-icono">{{ icono('alerta') }}</span>
+        <h2 id="dialogo-cruce-titulo">Venta con retiro en otra sede</h2>
+        <p id="dialogo-cruce-mensaje"></p>
+        <div class="dialogo-cruce-acciones">
+          <button class="boton boton-secundario" value="cancelar" type="submit">Cancelar</button>
+          <button class="boton boton-primario" value="confirmar" type="submit" id="dialogo-confirmar">{{ icono('check') }}<span>Sí, continuar</span></button>
+        </div>
+      </form>
+    </dialog>
+  </section>
+
+  <aside class="panel panel-lateral">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Reposición sugerida</h2>
+        <p class="panel-subtitulo">Accesos rápidos para productos con stock bajo.</p>
+      </div>
+    </div>
+
+    {% if alertas %}
+    <ul class="lista-alertas lateral">
+      {% for alerta in alertas %}
+      <li class="alerta-item">
+        <span class="alerta-indicador"></span>
+        <div class="alerta-info">
+          <strong>{{ alerta.nombre }}</strong>
+          <span>{{ alerta.codigo }} &middot; faltan {{ alerta.faltante }} &middot; P {{ alerta.stock_principal }} / S {{ alerta.stock_secundario }}</span>
+        </div>
+        <a class="boton boton-mini boton-secundario" href="{{ url_for('movimientos', codigo=alerta.codigo, tipo='INGRESO') }}">Ingresar</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="estado-vacio exito">
+      <span class="estado-vacio-icono">{{ icono('escudo') }}</span>
+      <div>
+        <strong>Sin alertas activas</strong>
+        <p>Todos los productos tienen stock suficiente.</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="nota-info">
+      <span class="nota-info-icono">{{ icono('alerta') }}</span>
+      <p>Si la sede elegida no tiene stock suficiente, el sistema consultará la otra sede y pedirá confirmación antes de registrar una venta con retiro cruzado.</p>
+    </div>
+  </aside>
+</div>
+
+<section class="panel">
+  <div class="panel-cabecera">
+    <div>
+      <h2>Historial de movimientos</h2>
+      <p class="panel-subtitulo">{{ paginacion.total }} movimiento{{ 's' if paginacion.total != 1 else '' }} encontrado{{ 's' if paginacion.total != 1 else '' }}.</p>
+    </div>
+    {% if es_admin %}
+    <a class="enlace-ver" href="{{ url_for('exportar_movimientos', tipo=filtros.tipo, codigo=filtros.codigo, sede=filtros.sede, q=filtros.consulta, desde=filtros.desde, hasta=filtros.hasta) }}">{{ icono('descargar') }} Exportar resultados</a>
+    {% endif %}
+  </div>
+
+  <form class="barra-filtros compacta" method="get" action="{{ url_for('movimientos') }}">
+    <label class="filtro-campo">
+      <span>Tipo</span>
+      <select name="tipo">
+        <option value="">Todos</option>
+        <option value="VENTA" {{ 'selected' if filtros.tipo == 'VENTA' else '' }}>Ventas</option>
+        <option value="INGRESO" {{ 'selected' if filtros.tipo == 'INGRESO' else '' }}>Ingresos</option>
+      </select>
+    </label>
+    <label class="filtro-campo">
+      <span>Sede afectada</span>
+      <select name="sede">
+        <option value="">Todas</option>
+        {% for clave, sede in sedes.items() %}
+          <option value="{{ clave }}" {{ 'selected' if filtros.sede == clave else '' }}>{{ sede.nombre }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="filtro-campo">
+      <span>Producto</span>
+      <select name="codigo">
+        <option value="">Todos</option>
+        {% for producto in productos %}
+          <option value="{{ producto.codigo }}" {{ 'selected' if filtros.codigo == producto.codigo else '' }}>{{ producto.codigo }} &middot; {{ producto.nombre }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="buscador buscador-compacto">
+      {{ icono('search') }}
+      <input type="search" name="q" value="{{ filtros.consulta }}" placeholder="Observación, ID..." aria-label="Buscar en movimientos">
+    </div>
+    <label class="filtro-campo filtro-fecha">
+      <span>Desde</span>
+      <input type="date" name="desde" value="{{ filtros.desde }}">
+    </label>
+    <label class="filtro-campo filtro-fecha">
+      <span>Hasta</span>
+      <input type="date" name="hasta" value="{{ filtros.hasta }}">
+    </label>
+    <button class="boton boton-primario boton-sm" type="submit">{{ icono('filtro') }}<span>Filtrar</span></button>
+    {% if filtros.tipo or filtros.codigo or filtros.sede or filtros.consulta or filtros.desde or filtros.hasta %}
+    <a class="boton-texto" href="{{ url_for('movimientos') }}">Limpiar</a>
+    {% endif %}
+  </form>
+
+  {% if historial %}
+  <div class="tabla-contenedor">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Fecha</th>
+          <th>Producto</th>
+          <th>Tipo</th>
+          <th>Sede afectada</th>
+          <th class="numero">Cantidad</th>
+          <th>Observación</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for movimiento in historial %}
+        <tr>
+          <td><span class="id-movimiento">#{{ movimiento.id }}</span></td>
+          <td class="texto-suave">{{ movimiento.fecha|fecha_legible }}</td>
+          <td>
+            <a class="tabla-enlace" href="{{ url_for('producto_detalle', codigo=movimiento.codigo) }}">
+              <span class="codigo">{{ movimiento.codigo }}</span>
+              <span>{{ movimiento.nombre_producto or movimiento.codigo }}</span>
+            </a>
+          </td>
+          <td>
+            <span class="badge {{ 'badge-ingreso' if movimiento.tipo == 'INGRESO' else 'badge-venta' }}">
+              {{ icono('entrada' if movimiento.tipo == 'INGRESO' else 'salida') }}
+              {{ movimiento.tipo }}
+            </span>
+          </td>
+          <td>
+            <span class="sede-etiqueta">{{ (movimiento.sede_afectada or movimiento.sede or sede_predeterminada)|nombre_sede }}</span>
+            {% if movimiento.venta_cruzada %}<span class="badge badge-venta">Cruce</span>{% endif %}
+          </td>
+          <td class="numero">{{ '+' if movimiento.tipo == 'INGRESO' else '-' }}{{ movimiento.cantidad }}</td>
+          <td class="texto-suave">{{ movimiento.observacion or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if paginacion.paginas > 1 %}
+  {% set anterior = paginacion.pagina - 1 %}
+  {% set siguiente = paginacion.pagina + 1 %}
+  <nav class="paginacion" aria-label="Paginación de movimientos">
+    <a class="pagina-boton {{ 'deshabilitado' if paginacion.pagina <= 1 else '' }}" href="{{ url_for('movimientos', tipo=filtros.tipo, codigo=filtros.codigo, sede=filtros.sede, q=filtros.consulta, desde=filtros.desde, hasta=filtros.hasta, pagina=anterior) }}">Anterior</a>
+    <span>Página {{ paginacion.pagina }} de {{ paginacion.paginas }}</span>
+    <a class="pagina-boton {{ 'deshabilitado' if paginacion.pagina >= paginacion.paginas else '' }}" href="{{ url_for('movimientos', tipo=filtros.tipo, codigo=filtros.codigo, sede=filtros.sede, q=filtros.consulta, desde=filtros.desde, hasta=filtros.hasta, pagina=siguiente) }}">Siguiente</a>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="estado-vacio">
+    <span class="estado-vacio-icono">{{ icono('historial') }}</span>
+    <div>
+      <strong>No hay movimientos que coincidan</strong>
+      <p>Registre una operación o ajuste los filtros de búsqueda.</p>
+      <a class="boton boton-secundario boton-sm" href="{{ url_for('movimientos') }}">Limpiar filtros</a>
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/movimientos.js') }}"></script>
+{% endblock %}

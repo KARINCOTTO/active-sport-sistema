@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% set es_edicion = modo == 'editar' %}
+{% block titulo %}{{ 'Editar usuario' if es_edicion else 'Nuevo usuario' }}{% endblock %}
+{% block topbar_contexto %}Administración / {{ 'Edición' if es_edicion else 'Alta' }}{% endblock %}
+{% block topbar_titulo %}{{ 'Editar usuario' if es_edicion else 'Nuevo usuario' }}{% endblock %}
+
+{% block contenido %}
+<nav class="migas" aria-label="Ruta de navegación">
+  <a href="{{ url_for('usuarios_lista') }}">Usuarios</a>
+  {{ icono('flecha') }}
+  {% if es_edicion %}
+    <span>{{ usuario.nombre }}</span>
+    {{ icono('flecha') }}
+    <span>Editar</span>
+  {% else %}
+    <span>Nuevo usuario</span>
+  {% endif %}
+</nav>
+
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{{ 'Actualización de acceso' if es_edicion else 'Alta de usuario' }}</p>
+    <h1>{{ 'Editar usuario' if es_edicion else 'Registrar nuevo usuario' }}</h1>
+    <p class="page-subtitulo">
+      {% if es_edicion %}
+        Actualice el nombre, el rol o la contraseña. El nombre de usuario no se puede modificar.
+      {% else %}
+        Cree una cuenta de acceso y asigne el rol que definirá sus permisos en el sistema.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+{% if errores %}
+<div class="mensaje-error-panel" role="alert">
+  <span class="mensaje-error-icono">{{ icono('alerta') }}</span>
+  <div>
+    <strong>No se pudo guardar el usuario</strong>
+    <ul>
+      {% for error in errores %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-formulario">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Datos de acceso</h2>
+        <p class="panel-subtitulo">Los campos marcados con * son obligatorios.</p>
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('usuario_editar', usuario_id=usuario.id) if es_edicion else url_for('usuario_nuevo') }}" class="formulario" novalidate>
+      <div class="form-grid">
+        <div class="campo campo-amplio">
+          <label for="nombre">Nombre completo *</label>
+          <input
+            type="text"
+            id="nombre"
+            name="nombre"
+            value="{{ valores.nombre }}"
+            maxlength="80"
+            placeholder="Ej. Ana Martínez"
+            autocomplete="name"
+            required
+          >
+        </div>
+
+        <div class="campo">
+          <label for="usuario">Nombre de usuario *</label>
+          <input
+            type="text"
+            id="usuario"
+            name="usuario"
+            value="{{ valores.usuario }}"
+            maxlength="30"
+            placeholder="Ej. ana.martinez"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+            {{ 'readonly' if es_edicion else '' }}
+            required
+          >
+          <p class="ayuda">Entre 3 y 30 caracteres. Se guarda en minúsculas.</p>
+        </div>
+
+        <div class="campo">
+          <label for="rol">Rol *</label>
+          <select id="rol" name="rol" required>
+            {% for clave, rol in roles.items() %}
+              <option value="{{ clave }}" {{ 'selected' if valores.rol == clave else '' }}>{{ rol.nombre }}</option>
+            {% endfor %}
+          </select>
+          <p class="ayuda">Define las secciones y acciones disponibles.</p>
+        </div>
+
+        <div class="campo">
+          <label for="password">{{ 'Nueva contraseña' if es_edicion else 'Contraseña *' }}</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="{{ 'Dejar en blanco para conservar' if es_edicion else 'Mínimo 8 caracteres' }}"
+            autocomplete="new-password"
+            {{ '' if es_edicion else 'required' }}
+          >
+          <p class="ayuda">{{ 'Opcional. Complete solo si desea cambiarla.' if es_edicion else 'Debe tener al menos 8 caracteres.' }}</p>
+        </div>
+
+        <div class="campo">
+          <label for="confirmacion">{{ 'Confirmar nueva contraseña' if es_edicion else 'Confirmar contraseña *' }}</label>
+          <input
+            type="password"
+            id="confirmacion"
+            name="confirmacion"
+            placeholder="Repita la contraseña"
+            autocomplete="new-password"
+            {{ '' if es_edicion else 'required' }}
+          >
+        </div>
+      </div>
+
+      <div class="form-acciones">
+        <a class="boton boton-secundario" href="{{ url_for('usuarios_lista') }}">Cancelar</a>
+        <button class="boton boton-primario" type="submit">
+          {{ icono('check') }}<span>{{ 'Guardar cambios' if es_edicion else 'Crear usuario' }}</span>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <aside class="panel panel-lateral">
+    <div class="panel-cabecera">
+      <div>
+        <h2>{{ 'Estado de la cuenta' if es_edicion else 'Buenas prácticas' }}</h2>
+      </div>
+    </div>
+
+    {% if es_edicion %}
+    <div class="usuario-estado-panel">
+      <span class="usuario-avatar avatar-grande {{ 'avatar-admin' if usuario.rol == 'admin' else '' }}">{{ usuario.nombre[:1]|upper }}</span>
+      <div>
+        <strong>{{ usuario.nombre }}</strong>
+        <span>@{{ usuario.usuario }}</span>
+        {% if usuario.activo %}
+          <span class="badge badge-ok">{{ icono('check') }} Activo</span>
+        {% else %}
+          <span class="badge badge-neutro">Inactivo</span>
+        {% endif %}
+      </div>
+    </div>
+    <p class="ayuda">El estado de la cuenta se cambia desde la lista de usuarios. Un usuario inactivo no puede iniciar sesión.</p>
+    {% endif %}
+
+    <ul class="lista-consejos">
+      <li>
+        <span class="consejo-icono">{{ icono('escudo') }}</span>
+        <div>
+          <strong>Administrador</strong>
+          <p>Acceso completo: inventario, productos, reportes, exportaciones y usuarios.</p>
+        </div>
+      </li>
+      <li>
+        <span class="consejo-icono">{{ icono('usuario') }}</span>
+        <div>
+          <strong>Trabajador</strong>
+          <p>Consulta el inventario y registra ventas e ingresos por sede.</p>
+        </div>
+      </li>
+      <li>
+        <span class="consejo-icono">{{ icono('llave') }}</span>
+        <div>
+          <strong>Contraseñas seguras</strong>
+          <p>Use al menos 8 caracteres y evite compartir credenciales entre personas.</p>
+        </div>
+      </li>
+    </ul>
+  </aside>
+</div>
+{% endblock %}

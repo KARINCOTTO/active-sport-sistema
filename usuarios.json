@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "nombre": "Administrador",
+    "usuario": "admin",
+    "rol": "admin",
+    "activo": true,
+    "password_hash": "scrypt:32768:8:1$QdCwPQezFIN6kUWu$81ccd89c1d941445f2e26a1592fa61154cba4322df823801d33ead554ebe24902e9f6d9fef17780d594d7e9163319871b2fc6daba4bd103030575b0d6b7c07b9",
+    "creado": "2026-11-05T14:04:11",
+    "ultimo_acceso": "2026-11-05T14:23:09"
+  },
+  {
+    "id": 2,
+    "nombre": "Trabajador",
+    "usuario": "trabajador",
+    "rol": "trabajador",
+    "activo": true,
+    "password_hash": "scrypt:32768:8:1$PbwlU8OopfPnzGNY$c201bb2d695502c73cfe812f8840c2cdc0f79a02604aa3aad704e27403d72f0dfcbb12f18856c41e00965a8a6a7ba570e4271dd6e4dfcb56292a7581091eeebf",
+    "creado": "2026-11-05T14:04:11",
+    "ultimo_acceso": "2026-11-05T14:12:29"
+  }
+]

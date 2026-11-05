@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block titulo %}{{ producto.nombre }}{% endblock %}
+{% block topbar_contexto %}Catálogo / {{ producto.codigo }}{% endblock %}
+{% block topbar_titulo %}Detalle de producto{% endblock %}
+
+{% block contenido %}
+<nav class="migas" aria-label="Ruta de navegación">
+  <a href="{{ url_for('catalogo') }}">Catálogo</a>
+  {{ icono('flecha') }}
+  <span>{{ producto.codigo }}</span>
+</nav>
+
+<div class="page-head">
+  <div>
+    <div class="titulo-con-codigo">
+      <span class="codigo codigo-grande">{{ producto.codigo }}</span>
+      {% if producto.stock_actual <= producto.stock_minimo %}
+        <span class="badge badge-peligro">{{ icono('alerta') }} Requiere reposición</span>
+      {% else %}
+        <span class="badge badge-ok">{{ icono('check') }} Disponible</span>
+      {% endif %}
+    </div>
+    <h1>{{ producto.nombre }}</h1>
+    <p class="page-subtitulo">Ficha de producto, disponibilidad por sede e historial de movimientos.</p>
+  </div>
+  <div class="page-acciones">
+    {% if es_admin %}
+    <a class="boton boton-secundario" href="{{ url_for('producto_editar', codigo=producto.codigo) }}">{{ icono('editar') }}<span>Editar</span></a>
+    {% endif %}
+    <a class="boton boton-primario" href="{{ url_for('movimientos', codigo=producto.codigo, tipo='VENTA') }}">{{ icono('salida') }}<span>Registrar venta</span></a>
+    <a class="boton boton-claro" href="{{ url_for('movimientos', codigo=producto.codigo, tipo='INGRESO') }}">{{ icono('entrada') }}<span>Registrar ingreso</span></a>
+  </div>
+</div>
+
+{% if producto.stock_actual <= producto.stock_minimo %}
+<div class="aviso aviso-peligro">
+  <span class="aviso-icono">{{ icono('alerta') }}</span>
+  <div>
+    <strong>Este producto necesita reposición</strong>
+    <p>
+      {% if faltante > 0 %}
+        Faltan {{ faltante }} unidades para alcanzar el stock mínimo de {{ producto.stock_minimo }}.
+      {% else %}
+        El stock está exactamente en el mínimo definido. Se recomienda reponer.
+      {% endif %}
+    </p>
+  </div>
+  <a class="boton boton-peligro boton-sm" href="{{ url_for('movimientos', codigo=producto.codigo, tipo='INGRESO') }}">{{ icono('entrada') }}<span>Reponer ahora</span></a>
+</div>
+{% endif %}
+
+<section class="grid-kpis">
+  <article class="kpi-card">
+    <span class="kpi-icono verde">{{ icono('paquete') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Stock total</span>
+      <strong class="kpi-valor">{{ producto.stock_actual }}</strong>
+      <small>unidades en ambas sedes</small>
+    </div>
+  </article>
+  <article class="kpi-card">
+    <span class="kpi-icono azul">{{ icono('catalogo') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Sede Principal</span>
+      <strong class="kpi-valor">{{ producto.stock_principal }}</strong>
+      <small>unidades disponibles</small>
+    </div>
+  </article>
+  <article class="kpi-card">
+    <span class="kpi-icono violeta">{{ icono('catalogo') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Sede Secundaria</span>
+      <strong class="kpi-valor">{{ producto.stock_secundario }}</strong>
+      <small>unidades disponibles</small>
+    </div>
+  </article>
+  <article class="kpi-card {{ 'kpi-peligro' if faltante else '' }}">
+    <span class="kpi-icono {{ 'rojo' if faltante else 'verde' }}">{{ icono('alerta' if faltante else 'escudo') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Stock mínimo</span>
+      <strong class="kpi-valor">{{ producto.stock_minimo }}</strong>
+      <small>{{ faltante ~ ' unidades faltantes' if faltante else 'sin faltantes' }}</small>
+    </div>
+  </article>
+</section>
+
+<div class="grid-principal">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Información del producto</h2>
+        <p class="panel-subtitulo">Datos maestros registrados en el catálogo.</p>
+      </div>
+    </div>
+
+    <dl class="lista-datos">
+      <div><dt>Código</dt><dd><span class="codigo">{{ producto.codigo }}</span></dd></div>
+      <div><dt>Nombre</dt><dd>{{ producto.nombre }}</dd></div>
+      <div><dt>Stock Sede Principal</dt><dd>{{ producto.stock_principal }} unidades</dd></div>
+      <div><dt>Stock Sede Secundaria</dt><dd>{{ producto.stock_secundario }} unidades</dd></div>
+      <div><dt>Stock total</dt><dd>{{ producto.stock_actual }} unidades</dd></div>
+      <div><dt>Stock mínimo</dt><dd>{{ producto.stock_minimo }} unidades</dd></div>
+      <div><dt>Ventas del mes</dt><dd>{{ producto.ventas_mes }} unidades</dd></div>
+      <div><dt>Unidades faltantes</dt><dd>{{ faltante }} unidades</dd></div>
+      <div><dt>Estado</dt>
+        <dd>
+          {% if producto.stock_actual <= producto.stock_minimo %}
+            <span class="badge badge-peligro">Requiere reposición</span>
+          {% else %}
+            <span class="badge badge-ok">Disponible</span>
+          {% endif %}
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <aside class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Nivel de existencias</h2>
+        <p class="panel-subtitulo">Relación entre stock total consolidado y mínimo.</p>
+      </div>
+    </div>
+    {% set base_nivel = producto.stock_minimo * 2 if producto.stock_minimo > 0 else 1 %}
+    {% set nivel = producto.stock_actual / base_nivel * 100 %}
+    <div class="nivel-destacado {{ 'peligro' if producto.stock_actual <= producto.stock_minimo else '' }}">
+      <strong>{{ producto.stock_actual }}</strong>
+      <span>de {{ producto.stock_minimo }} mínimas</span>
+    </div>
+    <div class="barra barra-alta">
+      <span class="{{ 'peligro' if producto.stock_actual <= producto.stock_minimo else '' }}" style="width: {{ nivel if nivel < 100 else 100 }}%"></span>
+    </div>
+    <p class="ayuda">
+      {% if producto.stock_actual > producto.stock_minimo %}
+        Existen {{ producto.stock_actual - producto.stock_minimo }} unidades por encima del mínimo consolidado.
+      {% else %}
+        El inventario consolidado está en o bajo el nivel mínimo de seguridad.
+      {% endif %}
+    </p>
+    <div class="stock-sedes-detalle">
+      <div>
+        <span>Sede Principal</span>
+        <strong>{{ producto.stock_principal }}</strong>
+        <div class="barra"><span style="width: {{ (producto.stock_principal / producto.stock_actual * 100) if producto.stock_actual else 0 }}%"></span></div>
+      </div>
+      <div>
+        <span>Sede Secundaria</span>
+        <strong>{{ producto.stock_secundario }}</strong>
+        <div class="barra"><span style="width: {{ (producto.stock_secundario / producto.stock_actual * 100) if producto.stock_actual else 0 }}%"></span></div>
+      </div>
+    </div>
+    <div class="panel-acciones-rapidas">
+      <a class="accion-rapida venta" href="{{ url_for('movimientos', codigo=producto.codigo, tipo='VENTA') }}">{{ icono('salida') }}<span>Vender</span></a>
+      <a class="accion-rapida ingreso" href="{{ url_for('movimientos', codigo=producto.codigo, tipo='INGRESO') }}">{{ icono('entrada') }}<span>Ingresar</span></a>
+    </div>
+  </aside>
+</div>
+
+<section class="panel">
+  <div class="panel-cabecera">
+    <div>
+      <h2>Historial de movimientos</h2>
+      <p class="panel-subtitulo">{{ total_movimientos }} movimiento{{ 's' if total_movimientos != 1 else '' }} registrado{{ 's' if total_movimientos != 1 else '' }} para este producto.</p>
+    </div>
+    <a class="enlace-ver" href="{{ url_for('movimientos', codigo=producto.codigo) }}">Ver en movimientos {{ icono('flecha') }}</a>
+  </div>
+
+  {% if historial %}
+  <div class="tabla-contenedor">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tipo</th>
+          <th>Sede</th>
+          <th class="numero">Cantidad</th>
+          <th>Fecha</th>
+          <th>Observación</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for movimiento in historial %}
+        <tr>
+          <td><span class="id-movimiento">#{{ movimiento.id }}</span></td>
+          <td>
+            <span class="badge {{ 'badge-ingreso' if movimiento.tipo == 'INGRESO' else 'badge-venta' }}">
+              {{ icono('entrada' if movimiento.tipo == 'INGRESO' else 'salida') }}
+              {{ movimiento.tipo }}
+            </span>
+          </td>
+          <td>
+            <span class="sede-etiqueta">{{ (movimiento.sede_afectada or movimiento.sede or sede_predeterminada)|nombre_sede }}</span>
+            {% if movimiento.venta_cruzada %}<span class="badge badge-venta">Cruce</span>{% endif %}
+          </td>
+          <td class="numero">{{ '+' if movimiento.tipo == 'INGRESO' else '-' }}{{ movimiento.cantidad }}</td>
+          <td class="texto-suave">{{ movimiento.fecha|fecha_legible }}</td>
+          <td class="texto-suave">{{ movimiento.observacion or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="estado-vacio">
+    <span class="estado-vacio-icono">{{ icono('historial') }}</span>
+    <div>
+      <strong>Sin movimientos para este producto</strong>
+      <p>El historial aparecerá cuando registre la primera venta o ingreso.</p>
+      <a class="boton boton-primario boton-sm" href="{{ url_for('movimientos', codigo=producto.codigo) }}">{{ icono('plus') }}<span>Registrar movimiento</span></a>
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

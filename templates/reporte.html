@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block titulo %}Reporte gerencial{% endblock %}
+{% block topbar_contexto %}Análisis{% endblock %}
+{% block topbar_titulo %}Reporte gerencial{% endblock %}
+
+{% block contenido %}
+<div class="solo-impresion encabezado-impresion">
+  <strong>ACTIVE SPORT S.A.</strong>
+  <span>Reporte gerencial de inventario &middot; {{ fecha_actual }}</span>
+</div>
+
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Resumen ejecutivo</p>
+    <h1>Reporte gerencial</h1>
+    <p class="page-subtitulo">Indicadores consolidados por sede, reposición pendiente y productos con mejor desempeño del mes.</p>
+  </div>
+  <div class="page-acciones">
+    <button class="boton boton-secundario" type="button" data-imprimir>{{ icono('imprimir') }}<span>Imprimir</span></button>
+    <a class="boton boton-primario" href="{{ url_for('exportar_reporte') }}">{{ icono('descargar') }}<span>Exportar CSV</span></a>
+  </div>
+</div>
+
+<section class="grid-kpis">
+  <article class="kpi-card">
+    <span class="kpi-icono verde">{{ icono('paquete') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Unidades totales</span>
+      <strong class="kpi-valor">{{ total_unidades }}</strong>
+      <small>Principal {{ total_principal }} &middot; Secundaria {{ total_secundario }}</small>
+    </div>
+  </article>
+  <article class="kpi-card">
+    <span class="kpi-icono azul">{{ icono('tendencia') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Ventas del mes</span>
+      <strong class="kpi-valor">{{ total_ventas_mes }}</strong>
+      <small>{{ unidades_vendidas_historial }} unidades registradas en movimientos</small>
+    </div>
+  </article>
+  <article class="kpi-card {{ 'kpi-peligro' if total_alertas else '' }}">
+    <span class="kpi-icono {{ 'rojo' if total_alertas else 'verde' }}">{{ icono('alerta' if total_alertas else 'escudo') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Alertas de reposición</span>
+      <strong class="kpi-valor">{{ total_alertas }}</strong>
+      <small>{{ unidades_faltantes }} unidades faltantes</small>
+    </div>
+  </article>
+  <article class="kpi-card">
+    <span class="kpi-icono violeta">{{ icono('historial') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Movimientos totales</span>
+      <strong class="kpi-valor">{{ total_movimientos }}</strong>
+      <small>
+        {% if ultimo_movimiento %}
+          Último registro: {{ ultimo_movimiento.fecha|fecha_corta }}
+        {% else %}
+          Sin movimientos registrados
+        {% endif %}
+        &middot; {{ ventas_cruzadas }} venta{{ 's' if ventas_cruzadas != 1 else '' }} cruzada{{ 's' if ventas_cruzadas != 1 else '' }}
+      </small>
+    </div>
+  </article>
+</section>
+
+<div class="grid-principal">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Existencias por producto</h2>
+        <p class="panel-subtitulo">Stock total consolidado comparado con el nivel máximo del catálogo.</p>
+      </div>
+      <span class="chip">{{ total_unidades }} unidades</span>
+    </div>
+
+    {% set codigos_alerta = alertas|map(attribute='codigo')|list %}
+    <div class="barras-productos">
+      {% for producto in productos %}
+      {% set en_alerta = producto.codigo in codigos_alerta %}
+      <a class="barra-fila" href="{{ url_for('producto_detalle', codigo=producto.codigo) }}">
+        <span class="barra-nombre">
+          <span class="codigo">{{ producto.codigo }}</span>
+          <span>{{ producto.nombre }}</span>
+        </span>
+        <span class="barra-pista">
+          <span class="barra-relleno {{ 'peligro' if en_alerta else '' }}" style="width: {{ (producto.stock_actual / max_stock * 100)|round(1) }}%"></span>
+        </span>
+        <span class="barra-valor">
+          <strong>{{ producto.stock_actual }}</strong>
+          <small>P {{ producto.stock_principal }} &middot; S {{ producto.stock_secundario }}</small>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="panel panel-salud">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Salud del inventario</h2>
+        <p class="panel-subtitulo">Proporción de productos disponibles.</p>
+      </div>
+    </div>
+
+    <div class="donut" style="--valor: {{ porcentaje_disponible }}">
+      <div class="donut-centro">
+        <strong>{{ porcentaje_disponible|round|int }}%</strong>
+        <span>productos OK</span>
+      </div>
+    </div>
+
+    <ul class="leyenda">
+      <li><span class="punto ok"></span><span>Disponibles</span><strong>{{ productos_disponibles }}</strong></li>
+      <li><span class="punto alerta"></span><span>Reponer</span><strong>{{ total_alertas }}</strong></li>
+      <li><span class="punto agotado"></span><span>Agotados</span><strong>{{ productos_agotados }}</strong></li>
+    </ul>
+
+    <div class="resumen-movimientos">
+      <div class="resumen-movimiento ingreso">
+        <span>{{ icono('entrada') }} Ingresos</span>
+        <strong>{{ unidades_ingresadas_historial }}</strong>
+        <small>unidades acumuladas</small>
+      </div>
+      <div class="resumen-movimiento venta">
+        <span>{{ icono('salida') }} Ventas</span>
+        <strong>{{ unidades_vendidas_historial }}</strong>
+        <small>unidades acumuladas</small>
+      </div>
+    </div>
+    <p class="ayuda">Ventas por sede: Principal {{ ventas_por_sede.principal }} &middot; Secundaria {{ ventas_por_sede.secundaria }}.</p>
+  </aside>
+</div>
+
+<div class="grid-secundario">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Top 3 productos con mayores ventas</h2>
+        <p class="panel-subtitulo">Acumulado del mes en curso.</p>
+      </div>
+      <span class="chip chip-ok">Mes actual</span>
+    </div>
+
+    {% if top_productos %}
+    {% set max_ventas = top_productos[0].ventas_mes if top_productos[0].ventas_mes > 0 else 1 %}
+    <ol class="ranking ranking-grande">
+      {% for producto in top_productos %}
+      <li>
+        <span class="ranking-puesto">{{ loop.index }}</span>
+        <div class="ranking-detalle">
+          <div class="ranking-linea">
+            <div>
+              <strong>{{ producto.nombre }}</strong>
+              <span class="ranking-codigo">{{ producto.codigo }}</span>
+            </div>
+            <span>{{ producto.ventas_mes }} ventas</span>
+          </div>
+          <div class="barra">
+            <span style="width: {{ (producto.ventas_mes / max_ventas * 100)|round(1) }}%"></span>
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="texto-vacio">No hay productos registrados en el catálogo.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Reposición pendiente</h2>
+        <p class="panel-subtitulo">Productos que requieren atención inmediata.</p>
+      </div>
+      <span class="chip {{ 'chip-peligro' if alertas else 'chip-ok' }}">{{ total_alertas }}</span>
+    </div>
+
+    {% if alertas %}
+    <ul class="lista-reposicion">
+      {% for alerta in alertas %}
+      <li>
+        <div class="reposicion-info">
+          <strong>{{ alerta.nombre }}</strong>
+          <span>{{ alerta.codigo }} &middot; total {{ alerta.stock_actual }} / mínimo {{ alerta.stock_minimo }} &middot; P {{ alerta.stock_principal }} / S {{ alerta.stock_secundario }}</span>
+        </div>
+        <span class="badge badge-peligro">{{ alerta.faltante }} por reponer</span>
+        <a class="boton boton-mini boton-secundario" href="{{ url_for('movimientos', codigo=alerta.codigo, tipo='INGRESO') }}">{{ icono('entrada') }}<span>Ingresar</span></a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="estado-vacio exito">
+      <span class="estado-vacio-icono">{{ icono('escudo') }}</span>
+      <div>
+        <strong>Sin reposiciones pendientes</strong>
+        <p>Todos los productos se encuentran sobre el stock mínimo consolidado.</p>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-cabecera">
+    <div>
+      <h2>Detalle del inventario</h2>
+      <p class="panel-subtitulo">Valores consolidados por producto.</p>
+    </div>
+  </div>
+
+  <div class="tabla-contenedor">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Producto</th>
+          <th class="numero">Principal</th>
+          <th class="numero">Secundaria</th>
+          <th class="numero">Total</th>
+          <th class="numero">Stock mínimo</th>
+          <th class="numero">Ventas mes</th>
+          <th class="numero">Faltante</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for producto in productos %}
+        {% set en_alerta = producto.codigo in codigos_alerta %}
+        <tr class="{{ 'fila-alerta' if en_alerta else '' }}">
+          <td><span class="codigo">{{ producto.codigo }}</span></td>
+          <td><a class="tabla-enlace-simple" href="{{ url_for('producto_detalle', codigo=producto.codigo) }}">{{ producto.nombre }}</a></td>
+          <td class="numero">{{ producto.stock_principal }}</td>
+          <td class="numero">{{ producto.stock_secundario }}</td>
+          <td class="numero">{{ producto.stock_actual }}</td>
+          <td class="numero">{{ producto.stock_minimo }}</td>
+          <td class="numero">{{ producto.ventas_mes }}</td>
+          <td class="numero">{{ (producto.stock_minimo - producto.stock_actual) if producto.stock_minimo > producto.stock_actual else 0 }}</td>
+          <td>
+            {% if en_alerta %}
+              <span class="badge badge-peligro">Reponer</span>
+            {% else %}
+              <span class="badge badge-ok">Disponible</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="2">Totales</th>
+          <th class="numero">{{ total_principal }}</th>
+          <th class="numero">{{ total_secundario }}</th>
+          <th class="numero">{{ total_unidades }}</th>
+          <th class="numero">&mdash;</th>
+          <th class="numero">{{ total_ventas_mes }}</th>
+          <th class="numero">{{ unidades_faltantes }}</th>
+          <th></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <p class="nota-pie">Reporte consolidado generado el {{ fecha_actual }} desde el sistema de gestión de inventario multisede de ACTIVE SPORT S.A. &middot; {{ ventas_cruzadas }} venta{{ 's' if ventas_cruzadas != 1 else '' }} con retiro cruzado.</p>
+</section>
+{% endblock %}

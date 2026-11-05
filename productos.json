@@ -1,0 +1,56 @@
+[
+  {
+    "codigo": "AS001",
+    "nombre": "Zapatillas para correr",
+    "stock_principal": 6,
+    "stock_secundario": 2,
+    "stock_actual": 8,
+    "stock_minimo": 18,
+    "ventas_mes": 54
+  },
+  {
+    "codigo": "AS002",
+    "nombre": "Camiseta deportiva",
+    "stock_principal": 16,
+    "stock_secundario": 21,
+    "stock_actual": 37,
+    "stock_minimo": 15,
+    "ventas_mes": 30
+  },
+  {
+    "codigo": "AS003",
+    "nombre": "Balón de fútbol",
+    "stock_principal": 4,
+    "stock_secundario": 5,
+    "stock_actual": 9,
+    "stock_minimo": 12,
+    "ventas_mes": 34
+  },
+  {
+    "codigo": "AS004",
+    "nombre": "Mochila deportiva",
+    "stock_principal": 9,
+    "stock_secundario": 13,
+    "stock_actual": 22,
+    "stock_minimo": 8,
+    "ventas_mes": 17
+  },
+  {
+    "codigo": "AS005",
+    "nombre": "Pantalón de entrenamiento",
+    "stock_principal": 4,
+    "stock_secundario": 7,
+    "stock_actual": 11,
+    "stock_minimo": 14,
+    "ventas_mes": 25
+  },
+  {
+    "codigo": "AS006",
+    "nombre": "Guantes de gimnasio",
+    "stock_principal": 13,
+    "stock_secundario": 18,
+    "stock_actual": 31,
+    "stock_minimo": 10,
+    "ventas_mes": 13
+  }
+]

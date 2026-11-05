@@ -1,0 +1,142 @@
+{% from "_iconos.html" import icono %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1d1a">
+  <title>{% block titulo %}Panel de control{% endblock %} | ACTIVE SPORT S.A.</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%230b1d1a'/%3E%3Ctext x='32' y='42' font-family='Segoe UI,sans-serif' font-size='25' font-weight='700' fill='%23c7f464' text-anchor='middle'%3EAS%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+</head>
+<body>
+  {% set endpoint = request.endpoint or "" %}
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="marca" href="{{ url_for('panel') }}">
+        <span class="marca-icono">AS</span>
+        <span class="marca-texto">
+          <strong>ACTIVE SPORT</strong>
+          <small>Gestión de inventario multisede</small>
+        </span>
+      </a>
+
+      <nav class="navegacion" aria-label="Navegación principal">
+        <p class="nav-titulo">Operación</p>
+        <a class="nav-enlace {{ 'activo' if endpoint == 'panel' else '' }}" href="{{ url_for('panel') }}">
+          {{ icono('panel') }}<span>Panel de control</span>
+        </a>
+        <a class="nav-enlace {{ 'activo' if endpoint in ['catalogo', 'producto_detalle', 'producto_nuevo', 'producto_editar'] else '' }}" href="{{ url_for('catalogo') }}">
+          {{ icono('catalogo') }}<span>Catálogo</span>
+          <span class="nav-contador">{{ total_productos_nav }}</span>
+        </a>
+        <a class="nav-enlace {{ 'activo' if endpoint == 'movimientos' else '' }}" href="{{ url_for('movimientos') }}">
+          {{ icono('movimientos') }}<span>Movimientos</span>
+        </a>
+        {% if es_admin %}
+        <a class="nav-enlace {{ 'activo' if endpoint == 'reporte' else '' }}" href="{{ url_for('reporte') }}">
+          {{ icono('reporte') }}<span>Reporte gerencial</span>
+        </a>
+        {% endif %}
+
+        {% if es_admin %}
+        <p class="nav-titulo">Administración</p>
+        <a class="nav-enlace {{ 'activo' if endpoint in ['producto_nuevo', 'producto_editar'] else '' }}" href="{{ url_for('producto_nuevo') }}">
+          {{ icono('plus') }}<span>Nuevo producto</span>
+        </a>
+        <a class="nav-enlace" href="{{ url_for('exportar_productos') }}">
+          {{ icono('descargar') }}<span>Exportar catálogo</span>
+        </a>
+        <a class="nav-enlace {{ 'activo' if endpoint in ['usuarios_lista', 'usuario_nuevo', 'usuario_editar'] else '' }}" href="{{ url_for('usuarios_lista') }}">
+          {{ icono('usuarios') }}<span>Usuarios y roles</span>
+        </a>
+        {% endif %}
+      </nav>
+
+      <div class="sidebar-pie">
+        {% if alertas_nav %}
+        <a class="estado-sistema alerta" href="{{ url_for('catalogo', estado='alerta') }}">
+          <span class="estado-icono">{{ icono('alerta') }}</span>
+          <span>
+            <strong>{{ alertas_nav }} producto{{ 's' if alertas_nav != 1 else '' }}</strong>
+            <small>requiere{{ 'n' if alertas_nav != 1 else '' }} reposición</small>
+          </span>
+          {{ icono('flecha') }}
+        </a>
+        {% else %}
+        <div class="estado-sistema ok">
+          <span class="estado-icono">{{ icono('escudo') }}</span>
+          <span>
+            <strong>Inventario estable</strong>
+            <small>Sin alertas activas</small>
+          </span>
+        </div>
+        {% endif %}
+        <p class="sidebar-version">ACTIVE SPORT S.A. &middot; v1.3 roles</p>
+      </div>
+    </aside>
+
+    <div class="velo" data-cerrar-menu aria-hidden="true"></div>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button class="menu-boton" type="button" data-abrir-menu aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">
+          {{ icono('menu') }}
+        </button>
+        <div class="topbar-titulo">
+          <span class="topbar-contexto">Inventario / {% block topbar_contexto %}Operación{% endblock %}</span>
+          <strong>{% block topbar_titulo %}Panel de control{% endblock %}</strong>
+        </div>
+        <div class="topbar-acciones">
+          <span class="topbar-fecha">{{ icono('reloj') }}<span>{{ fecha_actual }}</span></span>
+          {% block topbar_acciones %}
+          <a class="boton boton-primario boton-sm" href="{{ url_for('movimientos') }}">
+            {{ icono('plus') }}<span>Nuevo movimiento</span>
+          </a>
+          {% endblock %}
+          {% if usuario_actual %}
+          <div class="usuario-topbar" title="{{ usuario_actual.nombre }} · {{ usuario_actual.rol_nombre }}">
+            <span class="usuario-avatar">{{ usuario_actual.nombre[:1]|upper }}</span>
+            <span class="usuario-datos">
+              <strong>{{ usuario_actual.nombre }}</strong>
+              <small>{{ usuario_actual.rol_nombre }}</small>
+            </span>
+            <form method="post" action="{{ url_for('logout') }}">
+              <button class="boton-icono" type="submit" title="Cerrar sesión" aria-label="Cerrar sesión">
+                {{ icono('salir') }}
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </header>
+
+      <main class="contenido">
+        {% with mensajes = get_flashed_messages(with_categories=true) %}
+          {% if mensajes %}
+            <div class="toasts" id="toasts">
+              {% for categoria, mensaje in mensajes %}
+                <div class="toast {{ categoria }}" role="status">
+                  <span class="toast-icono">{{ icono('check' if categoria == 'success' else 'alerta') }}</span>
+                  <p>{{ mensaje }}</p>
+                  <button class="toast-cerrar" type="button" data-cerrar-mensaje aria-label="Cerrar mensaje">{{ icono('cerrar') }}</button>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block contenido %}{% endblock %}
+      </main>
+
+      <footer class="pie">
+        <span>ACTIVE SPORT S.A. &middot; Sistema de gestión de inventario</span>
+        <span>Prototipo académico &middot; Unidad I</span>
+      </footer>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block topbar_contexto %}Aviso del sistema{% endblock %}
+{% block topbar_titulo %}{{ titulo }}{% endblock %}
+
+{% block contenido %}
+<section class="panel error-pagina">
+  <span class="error-icono">{{ icono('alerta') }}</span>
+  <p class="eyebrow">No se pudo completar la operación</p>
+  <h1>{{ titulo }}</h1>
+  <p class="page-subtitulo">{{ mensaje }}</p>
+  <div class="acciones-error">
+    <a class="boton boton-primario" href="{{ url_for('panel') }}">{{ icono('panel') }}<span>Ir al panel</span></a>
+    <a class="boton boton-secundario" href="{{ url_for('catalogo') }}">{{ icono('catalogo') }}<span>Ver catálogo</span></a>
+    <a class="boton boton-secundario" href="{{ url_for('movimientos') }}">{{ icono('movimientos') }}<span>Movimientos</span></a>
+  </div>
+</section>
+{% endblock %}

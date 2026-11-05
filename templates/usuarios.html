@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block titulo %}Usuarios y roles{% endblock %}
+{% block topbar_contexto %}Administración / Seguridad{% endblock %}
+{% block topbar_titulo %}Usuarios y roles{% endblock %}
+
+{% block contenido %}
+{% set total_admins = usuarios|selectattr('rol', 'equalto', 'admin')|list|length %}
+{% set total_trabajadores = usuarios|selectattr('rol', 'equalto', 'trabajador')|list|length %}
+{% set total_activos = usuarios|selectattr('activo')|list|length %}
+
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Control de acceso</p>
+    <h1>Usuarios y roles</h1>
+    <p class="page-subtitulo">Administre quién puede entrar al sistema y qué acciones puede realizar según su rol.</p>
+  </div>
+  <div class="page-acciones">
+    <a class="boton boton-primario" href="{{ url_for('usuario_nuevo') }}">{{ icono('plus') }}<span>Nuevo usuario</span></a>
+  </div>
+</div>
+
+<section class="mini-stats" aria-label="Resumen de usuarios">
+  <div><span>Usuarios totales</span><strong>{{ total_usuarios }}</strong></div>
+  <div><span>Administradores</span><strong>{{ total_admins }}</strong></div>
+  <div><span>Trabajadores</span><strong>{{ total_trabajadores }}</strong></div>
+  <div><span>Activos</span><strong>{{ total_activos }}</strong></div>
+</section>
+
+<div class="grid-principal">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Equipo registrado</h2>
+        <p class="panel-subtitulo">Los usuarios desactivados conservan su historial, pero no pueden iniciar sesión.</p>
+      </div>
+    </div>
+
+    <div class="tabla-contenedor">
+      <table class="tabla tabla-usuarios">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Último acceso</th>
+            <th>Creado</th>
+            <th class="acciones-columna">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for usuario in usuarios %}
+          <tr class="{{ 'fila-inactiva' if not usuario.activo else '' }}">
+            <td>
+              <div class="usuario-celda">
+                <span class="usuario-avatar {{ 'avatar-admin' if usuario.rol == 'admin' else '' }}">{{ usuario.nombre[:1]|upper }}</span>
+                <div>
+                  <strong>{{ usuario.nombre }}{% if usuario.id == usuario_actual.id %} <small class="texto-tu">(tú)</small>{% endif %}</strong>
+                  <span>@{{ usuario.usuario }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge {{ 'badge-admin' if usuario.rol == 'admin' else 'badge-trabajador' }}">
+                {{ icono('escudo' if usuario.rol == 'admin' else 'usuario') }}
+                {{ usuario.rol_nombre }}
+              </span>
+            </td>
+            <td>
+              {% if usuario.activo %}
+                <span class="badge badge-ok">{{ icono('check') }} Activo</span>
+              {% else %}
+                <span class="badge badge-neutro">Inactivo</span>
+              {% endif %}
+            </td>
+            <td class="texto-suave">
+              {{ (usuario.ultimo_acceso|fecha_legible) if usuario.ultimo_acceso else 'Sin accesos' }}
+            </td>
+            <td class="texto-suave">{{ (usuario.creado|fecha_corta) if usuario.creado else '-' }}</td>
+            <td>
+              <div class="acciones-tabla">
+                <a class="boton boton-mini boton-secundario" href="{{ url_for('usuario_editar', usuario_id=usuario.id) }}">
+                  {{ icono('editar') }}<span>Editar</span>
+                </a>
+                {% if usuario.id != usuario_actual.id %}
+                <form method="post" action="{{ url_for('usuario_estado', usuario_id=usuario.id) }}">
+                  <input type="hidden" name="activo" value="{{ '0' if usuario.activo else '1' }}">
+                  {% if usuario.activo %}
+                  <button class="boton boton-mini boton-peligro" type="submit">{{ icono('cerrar') }}<span>Desactivar</span></button>
+                  {% else %}
+                  <button class="boton boton-mini boton-claro" type="submit">{{ icono('check') }}<span>Activar</span></button>
+                  {% endif %}
+                </form>
+                {% else %}
+                <span class="texto-suave texto-mini">Sesión actual</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="panel panel-lateral">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Permisos por rol</h2>
+        <p class="panel-subtitulo">Resumen de lo que puede hacer cada tipo de usuario.</p>
+      </div>
+    </div>
+
+    <div class="rol-resumen">
+      <div class="rol-resumen-cabecera admin">
+        <span>{{ icono('escudo') }}</span>
+        <div>
+          <strong>Administrador</strong>
+          <small>Control total del sistema</small>
+        </div>
+      </div>
+      <ul class="lista-consejos compacta">
+        <li><span class="consejo-icono">{{ icono('check') }}</span><div><p>Panel, catálogo, movimientos y reportes.</p></div></li>
+        <li><span class="consejo-icono">{{ icono('check') }}</span><div><p>Crear y editar productos.</p></div></li>
+        <li><span class="consejo-icono">{{ icono('check') }}</span><div><p>Exportar información y gestionar usuarios.</p></div></li>
+      </ul>
+    </div>
+
+    <div class="rol-resumen">
+      <div class="rol-resumen-cabecera trabajador">
+        <span>{{ icono('usuario') }}</span>
+        <div>
+          <strong>Trabajador</strong>
+          <small>Operación diaria</small>
+        </div>
+      </div>
+      <ul class="lista-consejos compacta">
+        <li><span class="consejo-icono">{{ icono('check') }}</span><div><p>Panel, catálogo y stock por sede.</p></div></li>
+        <li><span class="consejo-icono">{{ icono('check') }}</span><div><p>Registrar ventas e ingresos.</p></div></li>
+        <li><span class="consejo-icono">{{ icono('cerrar') }}</span><div><p>Sin acceso a reportes, productos ni usuarios.</p></div></li>
+      </ul>
+    </div>
+
+    <div class="nota-info">
+      <span class="nota-info-icono">{{ icono('alerta') }}</span>
+      <p>El sistema siempre conserva al menos un administrador activo para evitar bloqueos de acceso.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

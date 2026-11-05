@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% from "_iconos.html" import icono %}
+
+{% block titulo %}Panel de control{% endblock %}
+{% block topbar_contexto %}Resumen general{% endblock %}
+{% block topbar_titulo %}Panel de control{% endblock %}
+
+{% block contenido %}
+{% set codigos_alerta = alertas|map(attribute='codigo')|list %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Vista consolidada</p>
+    <h1>Panel de control</h1>
+    <p class="page-subtitulo">Estado consolidado del inventario por sede, alertas críticas y actividad reciente de ACTIVE SPORT S.A.</p>
+  </div>
+  <div class="page-acciones">
+    <a class="boton boton-secundario" href="{{ url_for('catalogo') }}">{{ icono('catalogo') }}<span>Ver catálogo</span></a>
+    <a class="boton boton-primario" href="{{ url_for('movimientos') }}">{{ icono('plus') }}<span>Registrar movimiento</span></a>
+  </div>
+</div>
+
+<section class="grid-kpis" aria-label="Indicadores principales">
+  <article class="kpi-card">
+    <span class="kpi-icono verde">{{ icono('paquete') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Unidades totales</span>
+      <strong class="kpi-valor">{{ total_unidades }}</strong>
+      <small>Principal {{ total_principal }} &middot; Secundaria {{ total_secundario }}</small>
+    </div>
+  </article>
+
+  <article class="kpi-card">
+    <span class="kpi-icono azul">{{ icono('tendencia') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Ventas del mes</span>
+      <strong class="kpi-valor">{{ total_ventas_mes }}</strong>
+      <small>{{ unidades_vendidas_historial }} unidades vendidas en movimientos</small>
+    </div>
+  </article>
+
+  <article class="kpi-card {{ 'kpi-peligro' if total_alertas else '' }}">
+    <span class="kpi-icono {{ 'rojo' if total_alertas else 'verde' }}">{{ icono('alerta' if total_alertas else 'escudo') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Alertas de reposición</span>
+      <strong class="kpi-valor">{{ total_alertas }}</strong>
+      <small>
+        {% if total_alertas %}
+          {{ unidades_faltantes }} unidades faltantes en total
+        {% else %}
+          Todos los productos sobre el mínimo
+        {% endif %}
+      </small>
+    </div>
+  </article>
+
+  <article class="kpi-card">
+    <span class="kpi-icono violeta">{{ icono('historial') }}</span>
+    <div class="kpi-cuerpo">
+      <span class="kpi-etiqueta">Movimientos registrados</span>
+      <strong class="kpi-valor">{{ total_movimientos }}</strong>
+      <small>
+        {% if ultimo_movimiento %}
+          Último: {{ ultimo_movimiento.fecha|fecha_legible }}
+        {% else %}
+          Aún sin operaciones
+        {% endif %}
+      </small>
+    </div>
+  </article>
+</section>
+
+<div class="grid-principal">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Alertas críticas de stock</h2>
+        <p class="panel-subtitulo">Productos en o bajo el mínimo que requieren reposición.</p>
+      </div>
+      <a class="enlace-ver" href="{{ url_for('catalogo', estado='alerta') }}">Ver todas {{ icono('flecha') }}</a>
+    </div>
+
+    {% if alertas %}
+    <ul class="lista-alertas">
+      {% for alerta in alertas %}
+      <li class="alerta-item">
+        <span class="alerta-indicador"></span>
+        <div class="alerta-info">
+          <strong>{{ alerta.nombre }}</strong>
+          <span>{{ alerta.codigo }} &middot; total {{ alerta.stock_actual }} / mínimo {{ alerta.stock_minimo }} &middot; P {{ alerta.stock_principal }} / S {{ alerta.stock_secundario }}</span>
+        </div>
+        <span class="badge badge-peligro">{{ alerta.faltante }} por reponer</span>
+        <a class="boton boton-mini boton-secundario" href="{{ url_for('movimientos', codigo=alerta.codigo, tipo='INGRESO') }}">{{ icono('entrada') }}<span>Ingresar</span></a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="estado-vacio exito">
+      <span class="estado-vacio-icono">{{ icono('escudo') }}</span>
+      <div>
+        <strong>Inventario sin alertas</strong>
+        <p>Todos los productos tienen existencias por encima del stock mínimo.</p>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="panel panel-salud">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Salud del inventario</h2>
+        <p class="panel-subtitulo">Cumplimiento sobre los mínimos definidos.</p>
+      </div>
+    </div>
+
+    <div class="donut" style="--valor: {{ porcentaje_disponible }}">
+      <div class="donut-centro">
+        <strong>{{ porcentaje_disponible|round|int }}%</strong>
+        <span>productos OK</span>
+      </div>
+    </div>
+
+    <ul class="leyenda">
+      <li><span class="punto ok"></span><span>Disponibles</span><strong>{{ productos_disponibles }}</strong></li>
+      <li><span class="punto alerta"></span><span>Requieren reposición</span><strong>{{ total_alertas }}</strong></li>
+      <li><span class="punto agotado"></span><span>Agotados</span><strong>{{ productos_agotados }}</strong></li>
+    </ul>
+
+    <div class="salud-cobertura">
+      <div>
+        <span>Cobertura sobre mínimos</span>
+        <strong>{{ cumplimiento_minimos }}%</strong>
+      </div>
+      <div class="barra">
+        <span style="width: {{ cumplimiento_minimos if cumplimiento_minimos < 100 else 100 }}%"></span>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="grid-secundario">
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Existencias por producto</h2>
+        <p class="panel-subtitulo">Comparativo visual del stock total y su distribución por sede.</p>
+      </div>
+      <a class="enlace-ver" href="{{ url_for('catalogo') }}">Catálogo {{ icono('flecha') }}</a>
+    </div>
+
+    <div class="barras-productos">
+      {% for producto in productos %}
+      {% set en_alerta = producto.codigo in codigos_alerta %}
+      <a class="barra-fila" href="{{ url_for('producto_detalle', codigo=producto.codigo) }}">
+        <span class="barra-nombre">
+          <span class="codigo">{{ producto.codigo }}</span>
+          <span>{{ producto.nombre }}</span>
+        </span>
+        <span class="barra-pista">
+          <span class="barra-relleno {{ 'peligro' if en_alerta else '' }}" style="width: {{ (producto.stock_actual / max_stock * 100)|round(1) }}%"></span>
+        </span>
+        <span class="barra-valor">
+          <strong>{{ producto.stock_actual }}</strong>
+          <small>P {{ producto.stock_principal }} &middot; S {{ producto.stock_secundario }}</small>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-cabecera">
+      <div>
+        <h2>Top ventas del mes</h2>
+        <p class="panel-subtitulo">Productos con mayor rotación.</p>
+      </div>
+      {% if es_admin %}
+      <a class="enlace-ver" href="{{ url_for('reporte') }}">Reporte {{ icono('flecha') }}</a>
+      {% endif %}
+    </div>
+
+    {% if top_productos %}
+    {% set max_ventas = top_productos[0].ventas_mes if top_productos[0].ventas_mes > 0 else 1 %}
+    <ol class="ranking">
+      {% for producto in top_productos %}
+      <li>
+        <span class="ranking-puesto">{{ loop.index }}</span>
+        <div class="ranking-detalle">
+          <div class="ranking-linea">
+            <strong>{{ producto.nombre }}</strong>
+            <span>{{ producto.ventas_mes }} ventas</span>
+          </div>
+          <div class="barra">
+            <span style="width: {{ (producto.ventas_mes / max_ventas * 100)|round(1) }}%"></span>
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="texto-vacio">No hay productos registrados.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-cabecera">
+    <div>
+      <h2>Actividad reciente</h2>
+      <p class="panel-subtitulo">Últimos movimientos de venta e ingreso.</p>
+    </div>
+    <a class="enlace-ver" href="{{ url_for('movimientos') }}">Ver historial {{ icono('flecha') }}</a>
+  </div>
+
+  {% if recientes %}
+  <div class="tabla-contenedor">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Producto</th>
+          <th>Tipo</th>
+          <th>Sede</th>
+          <th class="numero">Cantidad</th>
+          <th>Fecha</th>
+          <th>Observación</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for movimiento in recientes %}
+        <tr>
+          <td><span class="id-movimiento">#{{ movimiento.id }}</span></td>
+          <td>
+            <a class="tabla-enlace" href="{{ url_for('producto_detalle', codigo=movimiento.codigo) }}">
+              <span class="codigo">{{ movimiento.codigo }}</span>
+              <span>{{ movimiento.nombre_producto or movimiento.codigo }}</span>
+            </a>
+          </td>
+          <td>
+            <span class="badge {{ 'badge-ingreso' if movimiento.tipo == 'INGRESO' else 'badge-venta' }}">
+              {{ icono('entrada' if movimiento.tipo == 'INGRESO' else 'salida') }}
+              {{ movimiento.tipo }}
+            </span>
+          </td>
+          <td>
+            <span class="sede-etiqueta">{{ (movimiento.sede_afectada or movimiento.sede or sede_predeterminada)|nombre_sede }}</span>
+            {% if movimiento.venta_cruzada %}<span class="badge badge-venta">Cruce</span>{% endif %}
+          </td>
+          <td class="numero">{{ '+' if movimiento.tipo == 'INGRESO' else '-' }}{{ movimiento.cantidad }}</td>
+          <td class="texto-suave">{{ movimiento.fecha|fecha_legible }}</td>
+          <td class="texto-suave">{{ movimiento.observacion or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="estado-vacio">
+    <span class="estado-vacio-icono">{{ icono('historial') }}</span>
+    <div>
+      <strong>Aún no hay movimientos</strong>
+      <p>Registre una venta o un ingreso para comenzar a construir el historial.</p>
+      <a class="boton boton-primario boton-sm" href="{{ url_for('movimientos') }}">{{ icono('plus') }}<span>Registrar movimiento</span></a>
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
